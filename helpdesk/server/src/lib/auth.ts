@@ -1,11 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { Role } from "core/constants/role.ts";
-import prisma from "../db";
+import { prisma } from "./prisma";
 
 export const auth = betterAuth({
-  basePath: "/api/auth",
-  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(",") ?? [],
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  secret: process.env.BETTER_AUTH_SECRET,
+  trustedOrigins: [process.env.CLIENT_URL!],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
@@ -18,14 +18,12 @@ export const auth = betterAuth({
       role: {
         type: "string",
         required: true,
-        defaultValue: Role.agent,
-        input: false,
-      },
-      deletedAt: {
-        type: "date",
-        required: false,
+        defaultValue: "agent",
         input: false,
       },
     },
   },
 });
+
+export type Auth = typeof auth;
+export type Session = typeof auth.$Infer.Session;

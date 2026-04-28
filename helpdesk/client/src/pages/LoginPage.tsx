@@ -1,134 +1,89 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { signIn, useSession } from "@/lib/auth-client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import ErrorAlert from "@/components/ErrorAlert";
-import ErrorMessage from "@/components/ErrorMessage";
-import { Loader2 } from "lucide-react";
-
-const loginSchema = z.object({
-  email: z.email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { signIn, useSession } from "../lib/auth-client";
 
 export default function LoginPage() {
-  const { data: session, isPending } = useSession();
   const navigate = useNavigate();
-  const [serverError, setServerError] = useState("");
+  const { data: session, isPending } = useSession();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  if (isPending) {
-    return (
-      <div className="flex items-center justify-center h-screen text-muted-foreground">
-        <Loader2 className="animate-spin mr-2 h-5 w-5" />
-        Loading...
-      </div>
-    );
-  }
-
-  if (session) {
+  if (!isPending && session) {
     return <Navigate to="/" replace />;
   }
 
-  const onSubmit = async (data: LoginFormData) => {
-    setServerError("");
-
-    const { error } = await signIn.email(data);
-
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    const { error } = await signIn.email({ email, password });
     if (error) {
-      setServerError(error.message ?? "Login failed");
-      return;
+      setError(error.message ?? "Invalid credentials");
+      setIsSubmitting(false);
+    } else {
+      navigate("/", { replace: true });
     }
-
-    navigate("/", { replace: true });
-  };
+  }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-[400px] px-4 animate-in-page">
-        <div className="flex flex-col items-center mb-10">
-          <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center mb-5">
-            <span className="text-primary-foreground font-bold text-xl">H</span>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Sign in</h1>
+        <p className="text-sm text-gray-500 mb-6">Helpdesk agent portal</p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="you@example.com"
+            />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1.5">
-            Sign in to your helpdesk account
-          </p>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>
-              Enter your credentials to continue
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} noValidate>
-              {serverError && (
-                <ErrorAlert message={serverError} className="mb-4" />
-              )}
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@example.com"
-                    {...register("email")}
-                  />
-                  {errors.email && (
-                    <ErrorMessage message={errors.email.message} />
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    {...register("password")}
-                  />
-                  {errors.password && (
-                    <ErrorMessage message={errors.password.message} />
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting && (
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  )}
-                  {isSubmitting ? "Signing in..." : "Sign in"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg px-4 py-2.5 transition-colors"
+          >
+            {isSubmitting ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
       </div>
     </div>
   );
